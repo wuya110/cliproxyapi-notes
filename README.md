@@ -36,6 +36,24 @@ echo '--- port 9527 ---' && \
 ss -lntp | grep 9527
 ```
 
+## 一键回滚到最近备份
+```bash
+LAST_BAK=$(ls -1t /root/cli-proxy-api.bak_* 2>/dev/null | head -n 1) && \
+[ -n "$LAST_BAK" ] && \
+cp -a /root/cli-proxy-api "/root/cli-proxy-api.rollback_from_$(date -u +%Y%m%dT%H%M%SZ)" && \
+install -m 0755 "$LAST_BAK" /root/cli-proxy-api && \
+systemctl daemon-reload && \
+systemctl restart cli-proxy-api && \
+echo '--- rollback source ---' && \
+echo "$LAST_BAK" && \
+echo '--- cli-proxy-api status ---' && \
+systemctl status cli-proxy-api --no-pager -l | sed -n '1,20p' && \
+echo '--- cli-proxy-api pid/time ---' && \
+systemctl show cli-proxy-api -p MainPID -p ExecMainStartTimestamp -p ActiveEnterTimestamp && \
+echo '--- port 9527 ---' && \
+ss -lntp | grep 9527
+```
+
 ## 分步版升级流程
 ```bash
 VER=$(gh api repos/router-for-me/CLIProxyAPI/releases/latest --jq .tag_name | sed 's/^v//')
@@ -65,3 +83,4 @@ ss -lntp | grep 9527
 - 不再建议手工 `nohup` 或直接在 shell 里裸跑
 - 以后统一用 `systemctl restart cli-proxy-api` 管理
 - 升级口令会先自动备份旧二进制，再替换新版，再重启验证
+- 回滚口令会优先回滚到最近一个 `.bak_*` 备份
